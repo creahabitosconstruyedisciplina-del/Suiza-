@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Planificador — Sandra</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0d1b2a;
+    --navy-mid: #152336;
+    --navy-light: #1e3048;
+    --navy-card: #243850;
+    --mint: #5de0b0;
+    --mint-dim: #2a6e57;
+    --mint-glow: rgba(93,224,176,0.12);
+    --amber: #f5a623;
+    --red-soft: #e05d5d;
+    --white: #f0f4f8;
+    --white-dim: #8da3b8;
+    --white-faint: #3a5068;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--navy-mid);
+    border-bottom: 1px solid var(--white-faint);
+    padding: 20px 24px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .header-left h1 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.3px;
+  }
+  .header-left p {
+    font-size: 0.72rem;
+    color: var(--mint);
+    font-family: var(--font-mono);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .header-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .btn {
+    background: var(--navy-card);
+    border: 1px solid var(--white-faint);
+    color: var(--white);
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--mint); color: var(--mint); }
+  .btn-mint {
+    background: var(--mint);
+    border-color: var(--mint);
+    color: var(--navy);
+  }
+  .btn-mint:hover { background: #4ecda0; color: var(--navy); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── WEEK TABS ── */
+  .week-tabs {
+    display: flex;
+    gap: 0;
+    padding: 16px 24px 0;
+    border-bottom: 1px solid var(--white-faint);
+  }
+  .week-tab {
+    padding: 10px 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--white-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .week-tab.active {
+    color: var(--mint);
+    border-bottom-color: var(--mint);
+  }
+
+  /* ── WEEK PROGRESS ── */
+  .week-header {
+    padding: 20px 24px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .week-title {
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    color: var(--white-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+  .progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    max-width: 320px;
+  }
+  .progress-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: var(--navy-card);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--mint-dim), var(--mint));
+    border-radius: 99px;
+    transition: width 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .progress-pct {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--mint);
+    min-width: 32px;
+    text-align: right;
+  }
+
+  /* ── LOADING STATE ── */
+  .loading-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+    color: var(--white-dim);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    gap: 12px;
+  }
+  .spinner {
+    width: 22px; height: 22px;
+    border: 2px solid var(--white-faint);
+    border-top-color: var(--mint);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-banner {
+    margin: 12px 16px 0;
+    padding: 10px 14px;
+    background: rgba(224,93,93,0.10);
+    border: 1px solid var(--red-soft);
+    color: var(--red-soft);
+    border-radius: 8px;
+    font-size: 0.76rem;
+    display: none;
+  }
+  .error-banner.show { display: block; }
+
+  /* ── DAYS GRID ── */
+  .days-container {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* ── DAY CARD ── */
+  .day-card {
+    background: var(--navy-mid);
+    border: 1px solid var(--white-faint);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .day-card.day-completed { border-color: var(--mint-dim); }
+  .day-card.day-today { border-color: var(--mint); box-shadow: 0 0 0 1px var(--mint-dim); }
+
+  .day-header {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    cursor: pointer;
+    gap: 12px;
+    user-select: none;
+  }
+  .day-date-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 44px;
+  }
+  .day-num {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--white);
+  }
+  .day-dow {
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    color: var(--white-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 2px;
+  }
+  .day-info {
+    flex: 1;
+  }
+  .day-month {
+    font-size: 0.7rem;
+    color: var(--white-dim);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .today-badge {
+    margin-left: 8px;
+    background: var(--mint);
+    color: var(--navy);
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+  .day-turno {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .turno-manana { background: rgba(245,166,35,0.15); color: var(--amber); }
+  .turno-tarde  { background: rgba(93,224,176,0.10); color: var(--mint); }
+  .turno-libre  { background: rgba(240,244,248,0.08); color: var(--white-dim); }
+
+  .day-mini-checks {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .mini-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--white-faint);
+    transition: background 0.2s;
+  }
+  .mini-dot.done { background: var(--mint); }
+
+  .day-chevron {
+    font-size: 0.8rem;
+    color: var(--white-faint);
+    transition: transform 0.25s;
+  }
+  .day-card.open .day-chevron { transform: rotate(180deg); }
+
+  /* ── DAY BODY ── */
+  .day-body {
+    display: none;
+    padding: 0 16px 16px;
+    border-top: 1px solid var(--white-faint);
+  }
+  .day-card.open .day-body { display: block; }
+
+  /* ── BLOCKS ── */
+  .blocks-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .block-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--navy-light);
+    transition: background 0.15s;
+  }
+  .block-item.block-done { background: rgba(93,224,176,0.06); }
+
+  .block-check {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    border: 2px solid var(--white-faint);
+    background: transparent;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+    transition: all 0.15s;
+  }
+  .block-check:hover { border-color: var(--mint); }
+  .block-item.block-done .block-check {
+    background: var(--mint);
+    border-color: var(--mint);
+  }
+  .block-check::after {
+    content: '';
+    width: 10px; height: 7px;
+    border-left: 2px solid var(--navy);
+    border-bottom: 2px solid var(--navy);
+    transform: rotate(-45deg) translateY(-1px);
+    display: none;
+  }
+  .block-item.block-done .block-check::after { display: block; }
+
+  .block-content { flex: 1; }
+  .block-time {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--mint);
+    margin-bottom: 2px;
+    letter-spacing: 0.5px;
+  }
+  .block-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--white);
+    line-height: 1.3;
+  }
+  .block-detail {
+    font-size: 0.74rem;
+    color: var(--white-dim);
+    margin-top: 3px;
+    line-height: 1.45;
+  }
+  .block-tag {
+    display: inline-block;
+    margin-top: 5px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .tag-entreno  { background: rgba(245,166,35,0.15); color: var(--amber); }
+  .tag-estudio  { background: rgba(93,224,176,0.12); color: var(--mint); }
+  .tag-aleman   { background: rgba(100,149,237,0.15); color: #7ab3f5; }
+  .tag-trabajo  { background: rgba(224,93,93,0.12); color: var(--red-soft); }
+  .tag-descanso { background: rgba(240,244,248,0.07); color: var(--white-dim); }
+
+  /* ── NOTAS ── */
+  .notes-section { margin-top: 12px; }
+  .notes-label {
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    color: var(--white-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .notes-input {
+    width: 100%;
+    background: var(--navy-light);
+    border: 1px solid var(--white-faint);
+    border-radius: 8px;
+    color: var(--white);
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    padding: 10px 12px;
+    resize: vertical;
+    min-height: 64px;
+    transition: border-color 0.15s;
+    line-height: 1.5;
+  }
+  .notes-input:focus { outline: none; border-color: var(--mint); }
+  .notes-input::placeholder { color: var(--white-faint); }
+
+  /* ── MODAL AÑADIR ENTRENAMIENTO ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(13,27,42,0.88);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--navy-mid);
+    border: 1px solid var(--white-faint);
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 440px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .modal p.modal-sub {
+    font-size: 0.75rem;
+    color: var(--white-dim);
+    margin-bottom: 20px;
+  }
+  .form-group { margin-bottom: 14px; }
+  .form-label {
+    display: block;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    color: var(--white-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    background: var(--navy-light);
+    border: 1px solid var(--white-faint);
+    border-radius: 8px;
+    color: var(--white);
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    padding: 9px 12px;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none; border-color: var(--mint);
+  }
+  .form-select option { background: var(--navy-mid); }
+  .form-textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--white-faint); border-radius: 99px; }
+
+  @media (min-width: 640px) {
+    .days-container { padding: 16px 24px; }
+    header { padding: 20px 32px 16px; }
+    .week-tabs { padding: 16px 32px 0; }
+    .week-header { padding: 20px 32px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>📋 Mi Planificador</h1>
+    <p>Maratón San Sebastián · Nov 2026</p>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-mint" id="addBtn" onclick="openModal()" disabled>+ Añadir entreno</button>
+  </div>
+</header>
+
+<div class="error-banner" id="errorBanner"></div>
+
+<div class="week-tabs" id="weekTabs"></div>
+
+<div class="week-header" id="weekHeader" style="display:none">
+  <span class="week-title" id="weekLabel"></span>
+  <div class="progress-wrap">
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+    </div>
+    <span class="progress-pct" id="progressPct">0%</span>
+  </div>
+</div>
+
+<div id="loadingWrap" class="loading-wrap">
+  <div class="spinner"></div>
+  <div>Cargando tu planificador…</div>
+</div>
+
+<div class="days-container" id="daysContainer"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Añadir entrenamiento</h2>
+    <p class="modal-sub">Tu entrenador te ha mandado una sesión nueva. Añádela aquí y quedará guardada.</p>
+
+    <div class="form-group">
+      <label class="form-label">Semana</label>
+      <select class="form-select" id="newWeek">
+        <option value="0">Semana 1 (29 Jun – 5 Jul)</option>
+        <option value="1">Semana 2 (6 Jul – 12 Jul)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Día</label>
+      <select class="form-select" id="newDay"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Franja horaria</label>
+      <select class="form-select" id="newTime">
+        <option>🌅 Mañana</option>
+        <option>🍽️ Mediodía</option>
+        <option>🌆 Tarde</option>
+        <option>🌙 Noche</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nombre del entrenamiento</label>
+      <input class="form-input" id="newTitle" type="text" placeholder="Ej: 10×200m series + trote suave">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Detalle / descripción</label>
+      <textarea class="form-textarea" id="newDetail" placeholder="Calentamiento, series, ritmos, recuperaciones…"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-mint" onclick="saveNewBlock()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  DATA — Plan optimizado semanas 1 y 2
+// ══════════════════════════════════════
+const INITIAL_WEEKS = [
+  {
+    id: "w1",
+    label: "Semana 1",
+    dates: "29 Jun – 5 Jul",
+    days: [
+      {
+        id: "w1d1", date: "2026-06-29", dow: "Lun", num: "29", month: "Junio",
+        turno: "tarde",
+        blocks: [
+          { id:"b1", time:"08:30–10:30", tag:"estudio", title:"Ciberseguridad", detail:"2h activa — TryHackMe SOC / laboratorio" },
+          { id:"b2", time:"10:30–12:00", tag:"entreno", title:"Fuerza tronco inferior + CORE", detail:"35' spinning suave · estirar bien" },
+          { id:"b3", time:"Trabajo", tag:"trabajo", title:"Turno de tarde", detail:"Entrada 12:15–16h · Salida 19–22h" },
+          { id:"b4", time:"Al volver", tag:"aleman", title:"Alemán", detail:"30–40 min — Anki + vocabulario hostelería · solo repaso, nada nuevo" }
+        ]
+      },
+      {
+        id: "w1d2", date: "2026-06-30", dow: "Mar", num: "30", month: "Junio",
+        turno: "tarde",
+        blocks: [
+          { id:"b5", time:"08:00–09:00", tag:"aleman", title:"Alemán activo", detail:"1h — gramática nueva, frases, speaking en voz alta" },
+          { id:"b6", time:"09:15–11:15", tag:"estudio", title:"Ciberseguridad", detail:"2h — teoría Redes Cisco (lectura + notas, sin laboratorio)" },
+          { id:"b7", time:"Trabajo", tag:"trabajo", title:"Turno de tarde", detail:"Entrada 12:15–16h · Salida 19–22h" },
+          { id:"b8", time:"Noche", tag:"descanso", title:"Descanso total", detail:"Día de descanso físico — recuperación completa" }
+        ]
+      },
+      {
+        id: "w1d3", date: "2026-07-01", dow: "Mié", num: "1", month: "Julio",
+        turno: "libre",
+        blocks: [
+          { id:"b9",  time:"08:00–09:30", tag:"entreno", title:"Carrera", detail:"45' trote cómodo <75%FC + 10×20'' alta exigencia rec.45'' + 5' TMS" },
+          { id:"b10", time:"09:30–10:30", tag:"descanso", title:"Recuperación", detail:"Desayuno + ducha · no saltar esta ventana" },
+          { id:"b11", time:"10:30–12:30", tag:"estudio", title:"Ciberseguridad", detail:"2h — laboratorio TryHackMe en inglés" },
+          { id:"b12", time:"13:00–13:45", tag:"aleman", title:"Alemán", detail:"Listening activo — podcast + transcripción" }
+        ]
+      },
+      {
+        id: "w1d4", date: "2026-07-02", dow: "Jue", num: "2", month: "Julio",
+        turno: "libre",
+        blocks: [
+          { id:"b13", time:"08:30–10:30", tag:"estudio", title:"Ciberseguridad", detail:"2h — teoría redes Cisco (sesión exigente, cerebro fresco)" },
+          { id:"b14", time:"10:45–11:30", tag:"aleman", title:"Alemán", detail:"Gramática + ejercicios escritos" },
+          { id:"b15", time:"16:00–17:30", tag:"entreno", title:"Fuerza tronco superior + CORE", detail:"30' spinning libre" }
+        ]
+      },
+      {
+        id: "w1d5", date: "2026-07-03", dow: "Vie", num: "3", month: "Julio",
+        turno: "libre",
+        blocks: [
+          { id:"b16", time:"08:00–09:30", tag:"entreno", title:"Carrera", detail:"60' trote cómodo <75%FC + 8 rectas 100m progresión + estirar · terreno variado" },
+          { id:"b17", time:"09:30–10:30", tag:"descanso", title:"Recuperación", detail:"Desayuno tranquilo" },
+          { id:"b18", time:"11:30–13:00", tag:"estudio", title:"Ciberseguridad", detail:"1.5h — SOC (teoría o revisión de notas, no laboratorio intenso)" },
+          { id:"b19", time:"13:15–14:00", tag:"aleman", title:"Alemán", detail:"Listening — podcast en alemán (pasivo-activo)" }
+        ]
+      },
+      {
+        id: "w1d6", date: "2026-07-04", dow: "Sáb", num: "4", month: "Julio",
+        turno: "libre",
+        blocks: [
+          { id:"b20", time:"09:00–10:30", tag:"entreno", title:"Fuerza tronco inferior + CORE", detail:"35' spinning suave · estirar" },
+          { id:"b21", time:"11:00–13:00", tag:"estudio", title:"Ciberseguridad", detail:"2h — laboratorio o avance de módulo" },
+          { id:"b22", time:"13:00–13:30", tag:"aleman", title:"Alemán", detail:"30 min repaso rápido Anki" },
+          { id:"b23", time:"Tarde", tag:"descanso", title:"Descanso real", detail:"Mañana trabajas · cuerpo y mente necesitan resetear" }
+        ]
+      },
+      {
+        id: "w1d7", date: "2026-07-05", dow: "Dom", num: "5", month: "Julio",
+        turno: "manana",
+        blocks: [
+          { id:"b24", time:"Mañana", tag:"trabajo", title:"Turno de mañana", detail:"Entrada 6:15–8h · Salida 13:30–14:30" },
+          { id:"b25", time:"14:30–15:30", tag:"descanso", title:"Comida + descanso", detail:"Obligatorio — no saltarlo" },
+          { id:"b26", time:"15:30–16:15", tag:"aleman", title:"Alemán", detail:"Anki suave + vocabulario · nada cognitivamente pesado" },
+          { id:"b27", time:"16:30–17:30", tag:"estudio", title:"Ciberseguridad", detail:"1h — lectura técnica (no laboratorio, hay algo de fatiga)" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "w2",
+    label: "Semana 2",
+    dates: "6 Jul – 12 Jul",
+    days: [
+      {
+        id: "w2d1", date: "2026-07-06", dow: "Lun", num: "6", month: "Julio",
+        turno: "manana",
+        blocks: [
+          { id:"c1", time:"Mañana", tag:"trabajo", title:"Turno de mañana", detail:"Entrada 6:15–8h · Salida 13:30–14:30" },
+          { id:"c2", time:"14:00–15:00", tag:"descanso", title:"Comida + recuperación", detail:"" },
+          { id:"c3", time:"15:30–17:00", tag:"entreno", title:"Fuerza tronco inferior + CORE", detail:"15' trote suave + 8×1' trote vivo <85%FC rec.1' TMS + 5' trote suave" },
+          { id:"c4", time:"17:30–18:15", tag:"aleman", title:"Alemán activo", detail:"45 min — Anki + frases de conversación" }
+        ]
+      },
+      {
+        id: "w2d2", date: "2026-07-07", dow: "Mar", num: "7", month: "Julio",
+        turno: "manana",
+        blocks: [
+          { id:"c5", time:"Mañana", tag:"trabajo", title:"Turno de mañana", detail:"Entrada 6:15–8h · Salida 13:30–14:30" },
+          { id:"c6", time:"14:00–15:00", tag:"descanso", title:"Comida", detail:"" },
+          { id:"c7", time:"15:30–16:30", tag:"entreno", title:"Fuerza tronco superior", detail:"10' remo + trabajo fuerza + 20' spinning libre" },
+          { id:"c8", time:"17:00–18:00", tag:"estudio", title:"Ciberseguridad", detail:"1h — lectura técnica en inglés" }
+        ]
+      },
+      {
+        id: "w2d3", date: "2026-07-08", dow: "Mié", num: "8", month: "Julio",
+        turno: "manana",
+        blocks: [
+          { id:"c9",  time:"Mañana", tag:"trabajo", title:"Turno de mañana", detail:"Entrada 6:15–8h · Salida 13:30–14:30" },
+          { id:"c10", time:"14:00–15:00", tag:"descanso", title:"Comida + descanso", detail:"Descanso físico hoy" },
+          { id:"c11", time:"15:30–17:00", tag:"estudio", title:"Ciberseguridad", detail:"1.5h — laboratorio THM" },
+          { id:"c12", time:"17:15–18:00", tag:"aleman", title:"Alemán", detail:"45 min — gramática o Anki" }
+        ]
+      },
+      {
+        id: "w2d4", date: "2026-07-09", dow: "Jue", num: "9", month: "Julio",
+        turno: "libre",
+        blocks: [
+          { id:"c13", time:"08:00–09:30", tag:"entreno", title:"Series 200m", detail:"15' trote suave + 12×200m (4'10\"–4'15\", rec.45'' TMS) + 10' trote suave" },
+          { id:"c14", time:"09:30–10:30", tag:"descanso", title:"Recuperación", detail:"Sesión exigente — respetar ventana de recuperación" },
+          { id:"c15", time:"10:30–11:30", tag:"aleman", title:"Alemán intensivo", detail:"1h — post-entreno el cerebro está activado, buen momento" },
+          { id:"c16", time:"12:00–14:00", tag:"estudio", title:"Ciberseguridad", detail:"2h — laboratorio o módulo nuevo" }
+        ]
+      },
+      {
+        id: "w2d5", date: "2026-07-10", dow: "Vie", num: "10", month: "Julio",
+        turno: "libre",
+        blocks: [
+          { id:"c17", time:"08:30–10:30", tag:"estudio", title:"Ciberseguridad", detail:"2h — Redes Cisco (sesión técnica densa, cerebro fresco)" },
+          { id:"c18", time:"10:45–11:30", tag:"aleman", title:"Alemán", detail:"45 min" },
+          { id:"c19", time:"16:00–17:30", tag:"entreno", title:"Fuerza tronco inferior + CORE", detail:"30' spinning libre" }
+        ]
+      },
+      {
+        id: "w2d6", date: "2026-07-11", dow: "Sáb", num: "11", month: "Julio",
+        turno: "libre",
+        blocks: [
+          { id:"c20", time:"08:30–10:00", tag:"entreno", title:"Carrera técnica", detail:"Movilidad + técnica carrera + 15' trote suave + 5km trote vivo progresivo (último km cambio de ritmo) + 10' trote suave" },
+          { id:"c21", time:"10:00–11:00", tag:"descanso", title:"Recuperación", detail:"" },
+          { id:"c22", time:"11:00–12:30", tag:"estudio", title:"Ciberseguridad", detail:"1.5h" },
+          { id:"c23", time:"12:30–13:15", tag:"aleman", title:"Alemán", detail:"45 min" }
+        ]
+      },
+      {
+        id: "w2d7", date: "2026-07-12", dow: "Dom", num: "12", month: "Julio",
+        turno: "libre",
+        blocks: [
+          { id:"c24", time:"08:00–09:30", tag:"entreno", title:"Tirada larga", detail:"75' trail running cómodo o 65' trote cómodo en recorrido variado" },
+          { id:"c25", time:"09:30–11:00", tag:"descanso", title:"Recuperación completa", detail:"Esta sesión pasa factura — no escatimar en descanso" },
+          { id:"c26", time:"11:00–11:30", tag:"aleman", title:"Alemán", detail:"Solo vocabulario Anki — muy suave" },
+          { id:"c27", time:"Tarde", tag:"descanso", title:"Descanso total", detail:"Mañana turno de tarde — resetea cuerpo y mente" }
+        ]
+      }
+    ]
+  }
+];
+
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+const STORAGE_KEY = 'sandra_planner_v2';
+let state = {
+  weeks: JSON.parse(JSON.stringify(INITIAL_WEEKS)),
+  checks: {},
+  notes: {},
+  open: {}
+};
+let currentWeekIdx = 0;
+let isReady = false;
+
+async function loadState() {
+  try {
+    const result = await window.storage.get(STORAGE_KEY, false);
+    if (result && result.value) {
+      const parsed = JSON.parse(result.value);
+      if (parsed && parsed.weeks) state = parsed;
+    }
+  } catch (e) {
+    // No hay datos guardados todavía — se usa el estado por defecto.
+  }
+}
+
+async function saveState() {
+  try {
+    const result = await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+    if (!result) showError('No se pudo guardar el cambio. Vuelve a intentarlo.');
+    else hideError();
+  } catch (e) {
+    showError('No se pudo guardar el cambio. Vuelve a intentarlo.');
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideError() {
+  document.getElementById('errorBanner').classList.remove('show');
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function isToday(dateStr) { return dateStr === todayStr(); }
+
+// ══════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════
+function render() {
+  renderWeekTabs();
+  renderWeek();
+}
+
+function renderWeekTabs() {
+  const el = document.getElementById('weekTabs');
+  el.innerHTML = state.weeks.map((w, i) => `
+    <div class="week-tab ${i===currentWeekIdx?'active':''}" onclick="switchWeek(${i})">
+      ${w.label} <span style="opacity:0.6;font-size:0.7rem">· ${w.dates}</span>
+    </div>
+  `).join('');
+}
+
+function renderWeek() {
+  const week = state.weeks[currentWeekIdx];
+  document.getElementById('weekLabel').textContent = `${week.label} · ${week.dates}`;
+
+  let total = 0, done = 0;
+  week.days.forEach(day => {
+    day.blocks.forEach(b => {
+      if (b.tag !== 'descanso' && b.tag !== 'trabajo') {
+        total++;
+        if (state.checks[b.id]) done++;
+      }
+    });
+  });
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+
+  const container = document.getElementById('daysContainer');
+  container.innerHTML = week.days.map(day => renderDay(day)).join('');
+}
+
+function renderDay(day) {
+  const today = isToday(day.date);
+  const isOpen = state.open[day.id] || today;
+
+  const checkable = day.blocks.filter(b => b.tag !== 'descanso' && b.tag !== 'trabajo');
+  const doneCount = checkable.filter(b => state.checks[b.id]).length;
+  const allDone = checkable.length > 0 && doneCount === checkable.length;
+
+  const miniDots = checkable.map(b =>
+    `<div class="mini-dot ${state.checks[b.id]?'done':''}"></div>`
+  ).join('');
+
+  const turnoLabel = { manana:'Turno mañana', tarde:'Turno tarde', libre:'Día libre' }[day.turno];
+  const turnoClass = { manana:'turno-manana', tarde:'turno-tarde', libre:'turno-libre' }[day.turno];
+
+  const blocksHtml = day.blocks.map(b => renderBlock(b)).join('');
+  const notes = state.notes[day.id] || '';
+
+  return `
+  <div class="day-card ${allDone?'day-completed':''} ${today?'day-today':''} ${isOpen?'open':''}" id="card-${day.id}">
+    <div class="day-header" onclick="toggleDay('${day.id}')">
+      <div class="day-date-block">
+        <div class="day-num">${day.num}</div>
+        <div class="day-dow">${day.dow}</div>
+      </div>
+      <div class="day-info">
+        <div class="day-month">${day.month}${today?`<span class="today-badge">Hoy</span>`:''}</div>
+        <span class="day-turno ${turnoClass}">${turnoLabel}</span>
+      </div>
+      <div class="day-mini-checks">${miniDots}</div>
+      <div class="day-chevron">▼</div>
+    </div>
+    <div class="day-body">
+      <div class="blocks-list">${blocksHtml}</div>
+      <div class="notes-section">
+        <div class="notes-label">Observaciones del día</div>
+        <textarea class="notes-input" placeholder="¿Cómo fue? ¿Algún problema? ¿Cómo te sentiste…" 
+          oninput="saveNote('${day.id}', this.value)">${notes}</textarea>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderBlock(b) {
+  const done = !!state.checks[b.id];
+  const isCheckable = b.tag !== 'descanso' && b.tag !== 'trabajo';
+  const tagLabels = { entreno:'🏃 Entreno', estudio:'💻 Ciber', aleman:'🇩🇪 Alemán', trabajo:'💼 Trabajo', descanso:'💤 Descanso' };
+
+  return `
+  <div class="block-item ${done?'block-done':''}" id="block-${b.id}">
+    ${isCheckable ? `<div class="block-check" onclick="toggleCheck('${b.id}')"></div>` : ''}
+    <div class="block-content">
+      <div class="block-time">${b.time}</div>
+      <div class="block-title">${b.title}</div>
+      ${b.detail?`<div class="block-detail">${b.detail}</div>`:''}
+      <span class="block-tag tag-${b.tag}">${tagLabels[b.tag]||b.tag}</span>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════
+//  INTERACTIONS
+// ══════════════════════════════════════
+function switchWeek(idx) {
+  currentWeekIdx = idx;
+  render();
+}
+
+function toggleDay(dayId) {
+  state.open[dayId] = !state.open[dayId];
+  saveState();
+  const card = document.getElementById('card-' + dayId);
+  if (card) card.classList.toggle('open', state.open[dayId]);
+  renderWeek();
+}
+
+function toggleCheck(blockId) {
+  state.checks[blockId] = !state.checks[blockId];
+  saveState();
+  renderWeek();
+}
+
+function saveNote(dayId, val) {
+  state.notes[dayId] = val;
+  saveState();
+}
+
+// ══════════════════════════════════════
+//  MODAL — AÑADIR ENTRENAMIENTO
+// ══════════════════════════════════════
+function openModal() {
+  if (!isReady) return;
+  populateDaySelect();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+document.getElementById('newWeek').addEventListener('change', populateDaySelect);
+
+function populateDaySelect() {
+  const wIdx = parseInt(document.getElementById('newWeek').value);
+  const week = state.weeks[wIdx];
+  const sel = document.getElementById('newDay');
+  sel.innerHTML = week.days.map((d,i) =>
+    `<option value="${i}">${d.dow} ${d.num} ${d.month}</option>`
+  ).join('');
+}
+
+function saveNewBlock() {
+  const wIdx = parseInt(document.getElementById('newWeek').value);
+  const dIdx = parseInt(document.getElementById('newDay').value);
+  const time  = document.getElementById('newTime').value;
+  const title = document.getElementById('newTitle').value.trim();
+  const detail = document.getElementById('newDetail').value.trim();
+
+  if (!title) {
+    document.getElementById('newTitle').focus();
+    return;
+  }
+
+  const newId = 'u_' + Date.now();
+  const block = { id: newId, time, tag: 'entreno', title, detail };
+
+  state.weeks[wIdx].days[dIdx].blocks.push(block);
+  saveState();
+  closeModal();
+
+  currentWeekIdx = wIdx;
+  render();
+
+  const dayId = state.weeks[wIdx].days[dIdx].id;
+  state.open[dayId] = true;
+  saveState();
+  renderWeek();
+
+  document.getElementById('newTitle').value = '';
+  document.getElementById('newDetail').value = '';
+}
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+async function init() {
+  await loadState();
+
+  const today = todayStr();
+  state.weeks.forEach((w, wi) => {
+    w.days.forEach(d => {
+      if (d.date === today) {
+        currentWeekIdx = wi;
+        state.open[d.id] = true;
+      }
+    });
+  });
+
+  document.getElementById('loadingWrap').style.display = 'none';
+  document.getElementById('weekHeader').style.display = 'flex';
+  document.getElementById('addBtn').disabled = false;
+  isReady = true;
+
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
